@@ -11,7 +11,6 @@ import com.vaadin.server.VaadinPortlet;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.shared.ui.label.ContentMode;
 import com.vaadin.ui.*;
-import com.vaadin.ui.Button.ClickEvent;
 import com.vaadin.ui.themes.BaseTheme;
 import org.apache.commons.digester.rss.Channel;
 import org.apache.commons.digester.rss.Item;
@@ -60,9 +59,7 @@ public class MyVaadinUI extends UI
     private BeanItemContainer<RSSChannel> objects;
     private ComboBox channelSelection;
     private VerticalLayout RSSFeedContainer;
-    private TextField channelCaption;
-    private TextField channelURL;
-
+    private List<RSSChannel> channelList;
     private ManageChannelsWindow window;
 
     public User user;
@@ -97,14 +94,14 @@ public class MyVaadinUI extends UI
         RSSFeedContainer.setCaption("RSS feed");
 
         createUpdateChannelButton();
-        createAddChannelButton();
+//        createAddChannelButton();
 //        createRemoveChannelButton();
         createManageChannelsButton();
-        createDatabaseConnectButton();
+        createUpdateChannelListButton();
 
 //        layout.addComponent(changeChannelButton);
         layout.addComponent(updateChannelButton);
-        layout.addComponent(addChannelButton);
+//        layout.addComponent(addChannelButton);
 //        layout.addComponent(removeChannelButton);
         layout.addComponent(manageChannelsButton);
         layout.addComponent(databaseConnectButton);
@@ -116,9 +113,11 @@ public class MyVaadinUI extends UI
 
         objects = new BeanItemContainer(RSSChannel.class);
 
-        addChannel("Хабрахабр | Захабренные | Отхабренные", "http://habrahabr.ru/rss/hubs/");
-        addChannel("Хабрахабр | Лучшие за сутки", "http://habrahabr.ru/rss/best/");
-        objects.addAll(channels);
+//        addChannel("Хабрахабр | Захабренные | Отхабренные", "http://habrahabr.ru/rss/hubs/");
+//        addChannel("Хабрахабр | Лучшие за сутки", "http://habrahabr.ru/rss/best/");
+//        objects.addAll(channels);
+        channelList = fetchChannels();
+        objects.addAll(channelList);
 
         channelSelection = new ComboBox("Channel", objects);
         channelSelection.setItemCaptionPropertyId("channelName");
@@ -130,23 +129,15 @@ public class MyVaadinUI extends UI
 
         layout.addComponent(channelSelection);
 
-        channelCaption = new TextField("Channel name");
-        channelURL = new TextField("Channel URL");
+//        channelCaption = new TextField("Channel name");
+//        channelURL = new TextField("Channel URL");
 
-        layout.addComponent(channelCaption);
-        layout.addComponent(channelURL);
+//        layout.addComponent(channelCaption);
+//        layout.addComponent(channelURL);
 
 //        parseRSS();
 
         layout.addComponent(RSSFeedContainer);
-
-        layout.addComponent(new Label("getUserId(): " + user.getUserId(), ContentMode.TEXT));
-        try {
-            layout.addComponent(new Label("getUserUuId(): " + user.getUserUuid(), ContentMode.TEXT));
-        } catch (SystemException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
-        layout.addComponent(new Label("getUuId(): " + user.getUuid(), ContentMode.TEXT));
     }
 
 
@@ -210,21 +201,8 @@ public class MyVaadinUI extends UI
     }
 
 
-    private void createAddChannelButton() {
-        addChannelButton = new Button("Add channel");
-        addChannelButton.setStyleName(BaseTheme.BUTTON_LINK);
-        addChannelButton.addClickListener(new Button.ClickListener() {
-            public void buttonClick(Button.ClickEvent event) {
-                if(addChannel(channelCaption.getValue(), channelURL.getValue())){
-                    Notification.show("Channel \"" +  channelCaption.getValue() + "\" with URL\"" + channelURL.getValue() + "\" added", Notification.Type.TRAY_NOTIFICATION);
-                }
-            }
-        });
-    }
-
-
     private void createManageChannelsButton() {
-        manageChannelsButton = new Button("Manage channels");
+        manageChannelsButton = new Button("Manage my channels");
         manageChannelsButton.setStyleName(BaseTheme.BUTTON_LINK);
         manageChannelsButton.addClickListener(new Button.ClickListener() {
             public void buttonClick(Button.ClickEvent event) {
@@ -244,49 +222,14 @@ public class MyVaadinUI extends UI
     }
 
 
-    private void createDatabaseConnectButton() {
-        databaseConnectButton = new Button("Fetch channels from DB");
+    private void createUpdateChannelListButton() {
+        databaseConnectButton = new Button("Fetch my channels from DB");
         databaseConnectButton.setStyleName(BaseTheme.BUTTON_LINK);
         databaseConnectButton.addClickListener(new Button.ClickListener() {
             public void buttonClick(Button.ClickEvent event) {
-                //    Get JDBC connection to your mysql database
-                try {
-//                    Notification.show("123123123123", Notification.Type.HUMANIZED_MESSAGE);
-                    Class.forName("com.mysql.jdbc.Driver");
-                    String dburl = "jdbc:mysql://localhost:3306/test";
-                    Connection conn = DriverManager.getConnection(dburl, "root", "unclefucka");
-
-                    //    Query the DB to get ResultSet back.
-                    Statement statement = conn.createStatement();
-                    ResultSet resultSet = statement.executeQuery("SELECT channelTitle, channelURL FROM channels");
-                    //    Loop through the ResultSet
-                    int i = 0;
-                    while (resultSet.next()) {
-                        i++;
-                        ResultSetMetaData rsmd = resultSet.getMetaData();
-                        Reader channelTitleStream = resultSet.getCharacterStream(1);
-                        Reader channelURLStream = resultSet.getCharacterStream(2);
-
-                        char channelTitleChars[];
-                        char channelURLChars[];
-                        int channelTitleSize = rsmd.getColumnDisplaySize(1);
-                        int channelURLSize = rsmd.getColumnDisplaySize(2);
-                        channelTitleChars = new char[2*channelTitleSize];
-                        channelURLChars = new char[2*channelURLSize];
-
-                        channelTitleStream.read(channelTitleChars);
-                        channelURLStream.read(channelURLChars);
-                        String channelTitle = new String(channelTitleChars);
-                        String channelURL = new String(channelURLChars);
-
-                        objects.addBean(new RSSChannel(channelTitle, channelURL));
-                    }
-                    conn.close();
-                } catch (Exception e) {
-                    Notification.show("ACTUNG!!1", Notification.Type.ERROR_MESSAGE);
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                    log.warn("ACHTUNG!!1", e);
-                }
+                objects.removeAllItems();
+                channelList = fetchChannels();
+                objects.addAll(channelList);
             }
         });
     }
@@ -303,7 +246,7 @@ public class MyVaadinUI extends UI
 
             //    Query the DB to get ResultSet back.
             Statement statement = conn.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT channelTitle, channelURL FROM channels");
+            ResultSet resultSet = statement.executeQuery("SELECT channelTitle, channelURL FROM channels WHERE userId=" + user.getUserId());
 
             //    Loop through the ResultSet
             while (resultSet.next()) {
@@ -335,6 +278,19 @@ public class MyVaadinUI extends UI
             return list;
         }
     }
+
+
+    /*private void createAddChannelButton() {
+        addChannelButton = new Button("Add channel");
+        addChannelButton.setStyleName(BaseTheme.BUTTON_LINK);
+        addChannelButton.addClickListener(new Button.ClickListener() {
+            public void buttonClick(Button.ClickEvent event) {
+                if(addChannel(channelCaption.getValue(), channelURL.getValue())){
+                    Notification.show("Channel \"" +  channelCaption.getValue() + "\" with URL\"" + channelURL.getValue() + "\" added", Notification.Type.TRAY_NOTIFICATION);
+                }
+            }
+        });
+    }*/
 
 
     /*private void createRemoveChannelButton() {
